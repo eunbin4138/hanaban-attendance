@@ -220,6 +220,13 @@ parse_Primary(n.content)}catch(l){}a="/EncryptionInfo";n=Qe.find(e,a);if(!n||!n.
    0. 상수 · 기본 설정
    ============================================================ */
 const KEY = "hyu-attendance-v1";
+
+/**
+ * 화면 버전. 설정 탭 맨 아래에 뜬다.
+ * 폰이 옛날 화면을 붙들고 있는지 눈으로 확인하려는 용도 —
+ * 고칠 때마다 이 날짜를 올린다.
+ */
+const BUILD = "2026-08-17 (3)";
 const WD  = ["일","월","화","수","목","금","토"];
 /** 출석 인정 사유는 딱 하나 — 공결(생리). 달력 월 1회, 두 번째부터는 일반 결석 */
 const CREDIT_LABEL  = "공결(생리)";
@@ -1014,6 +1021,14 @@ function viewSettings(){
     <h2 style="color:var(--red)">초기화</h2>
     <button id="btnWipe" style="color:var(--red);border-color:#f3c2bc">모든 출석 기록 삭제</button>
     <div class="hint">되돌릴 수 없습니다. 먼저 백업하세요.</div>
+  </div>
+
+  <div class="card">
+    <h2>화면 버전</h2>
+    <div class="row"><b style="font-variant-numeric:tabular-nums">${BUILD}</b>
+      <button id="btnReload" style="margin-left:auto">최신으로 새로고침</button></div>
+    <div class="hint">폰은 화면을 저장해뒀다 다시 보여주는 성질이 있어서, 고친 내용이 바로 안 올 수 있습니다.
+      이 날짜가 제가 알려드린 것보다 옛날이면 <b>최신으로 새로고침</b>을 누르세요.</div>
   </div>`;
 }
 
@@ -1308,6 +1323,12 @@ function wire(){
         S.records={}; S.reports={}; save(); render();
       }
     };
+
+    // 저장돼 있던 옛 화면을 건너뛰고 서버에서 새로 받아온다.
+    // 주소 끝에 매번 다른 숫자를 붙이면 폰이 "처음 보는 주소"로 여겨 새로 받는다.
+    // 기록은 주소가 아니라 브라우저에 저장돼 있어서 그대로 남는다.
+    const rl=$("#btnReload");
+    if(rl) rl.onclick=()=>{ location.replace(location.pathname + "?v=" + Date.now()); };
   }
 }
 
