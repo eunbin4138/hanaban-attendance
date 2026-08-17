@@ -243,6 +243,7 @@ const DEFAULTS = {
   // 기본 공휴일 = 추정값. 학사일정 나오면 반드시 확인할 것.
   holidays   : ["2026-09-24","2026-09-25","2026-10-05","2026-10-09"],
   cultureDays: [],                        // 문화체험일 (미정)
+  totalHoursFixed: 200,                   // 학교가 정한 총 수업시간 (0이면 달력으로 계산)
   absLimitPromote : 41,                   // 결석 41시간 "이상" → 진급 불가
   absLimitReEnroll: 61,                   // 결석 61시간 "이상" → 재등록 불가
   hoursPromote    : 160,                  // 진급에 필요한 출석시간 (표시용)
@@ -332,8 +333,20 @@ const isCulture = k => S.settings.cultureDays.includes(k);
 const periodsOf = () => S.settings.periods[S.settings.session];
 /** 그날의 총 인정 시간 (문화체험일 8h, 평일 4h) */
 const dayHours = k => isCulture(k) ? S.settings.cultureHours : periodsOf().length;
-/** 학기 총 수업시간 */
-function totalHours(){ return classDays().reduce((a,k)=>a+dayHours(k), 0); }
+/** 달력으로 계산한 수업시간 (수업일 × 4h, 문화체험일은 8h) */
+function calendarHours(){ return classDays().reduce((a,k)=>a+dayHours(k), 0); }
+
+/**
+ * 학기 총 수업시간.
+ *
+ * 학교가 정한 200시간은 고정값이라, 달력 계산에 흔들리면 안 된다.
+ * (휴무일 하루만 어긋나도 196·204로 튄다)
+ * 그래서 설정의 고정값을 우선 쓰고, 0이나 빈칸이면 달력 계산으로 넘어간다.
+ */
+function totalHours(){
+  const fixed = Number(S.settings.totalHoursFixed);
+  return fixed > 0 ? fixed : calendarHours();
+}
 /** 몇 주차인가 */
 function weekNo(k){
   const st=parseYmd(S.settings.termStart), cur=parseYmd(k);
@@ -900,10 +913,25 @@ function viewSettings(){
     <div class="grid2">
       <div class="fld"><label>휴무일 (수업 없음 · 계산 제외)</label>
         <textarea data-list="holidays" rows="6">${st.holidays.join("\n")}</textarea>
-        <div class="hint">YYYY-MM-DD 한 줄에 하나. 기본값은 공휴일 <b>추정치</b>라 학사일정 나오면 꼭 확인하세요.</div></div>
+        <div class="hint">YYYY-MM-DD 한 줄에 하나. 기본으로 들어 있는 건 <b>2026년 가을학기 법정공휴일</b>입니다 —
+          09-24·09-25 추석 연휴 · 10-05 개천절 대체공휴일 · 10-09 한글날.
+          (추석 연휴 9/26은 토요일이라 원래 수업일이 아니고, 일요일과 안 겹쳐 대체공휴일도 없습니다)
+          학교가 따로 쉬는 날이 있으면 여기에 더하세요.</div></div>
       <div class="fld"><label>문화체험일 (전원 ${st.cultureHours}시간 출석 인정)</label>
         <textarea data-list="cultureDays" rows="6">${st.cultureDays.join("\n")}</textarea>
-        <div class="hint">이 날은 출석 체크 없이 전원 인정되고, 총 수업시간이 4시간씩 늘어납니다.</div></div>
+        <div class="hint">이 날은 출석 체크 없이 전원 인정됩니다.</div></div>
+    </div>
+
+    <div class="fld" style="margin-top:14px;max-width:280px">
+      <label>총 수업시간 (학교 기준)</label>
+      <input type="number" data-set2n="totalHoursFixed" value="${st.totalHoursFixed}" min="0">
+      <div class="hint">학교가 정한 <b>고정값</b>입니다. 달력·휴무일이 조금 달라도 이 숫자를 씁니다.
+        지금 달력으로 계산하면 <b>${calendarHours()}시간</b>(수업일 ${classDays().length}일)이에요.
+        ${calendarHours()!==totalHours()
+          ? `<br><span style="color:var(--amber)">⚠️ ${Math.abs(calendarHours()-totalHours())}시간 차이 —
+             휴무일·문화체험일이 실제 학사일정과 다를 수 있으니 한 번 확인해보세요.</span>`
+          : `<br><span style="color:var(--green)">✅ 달력 계산과 일치합니다.</span>`}
+        <br>0으로 두면 달력 계산값을 그대로 씁니다.</div>
     </div>
   </div>
 
